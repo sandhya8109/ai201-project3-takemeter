@@ -62,7 +62,7 @@ An immediate emotional response to something watched. The post is primarily abou
 | analysis | 86 | 43% |
 | hot_take | 59 | 29.5% |
 | reaction | 58 | 29% |
-| **Total** | **200** | 100% |
+| **Total** | **200+** | 100% |
 
 **Train/validation/test split:** 140 / 30 / 30 (70% / 15% / 15%), handled automatically by the notebook.
 
