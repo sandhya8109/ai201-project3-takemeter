@@ -172,25 +172,25 @@ All 30 test examples were parseable (100% parse rate). Results were collected by
 
 ### Analysis of Wrong Predictions
 
-The model made 6 errors total (20% error rate). The confusion matrix reveals a clear directional pattern: **the model never misclassifies analysis**, but it struggles to distinguish hot_take and reaction from analysis. 5 out of 6 errors involve predicting analysis when the true label is hot_take or reaction.
+The model made 6 errors total (20% error rate). The confusion matrix reveals a clear directional pattern: **the model never misclassifies analysis**, but it struggles to distinguish hot_take and reaction from analysis. 4 out of 6 errors involve predicting analysis when the true label is hot_take or reaction. The remaining 2 errors are: 1 hot_take predicted as reaction, and 1 reaction predicted as analysis beyond the hot_take misses.
 
 **Wrong prediction #1**
-> "I never got the Weapons overhype. It's an extremely fun horror film but there's nothing groundbreaking that would make it stand out from other good films in the genre. Ditto for the Terrifier films."
-> True: hot_take — Predicted: analysis
+> "I'm not sure I've seen a more perfectly constructed film than Rosemary's Baby. There are many films that are more artfully or cinematically constructed, but rewatching it we were absolutely struck by how there is zero fat on this film."
+> True: hot_take — Predicted: reaction (confidence: 0.36)
 
-This post references specific films (Weapons, Terrifier) and makes a comparative claim, which superficially looks like analysis. But it never explains *why* these films aren't groundbreaking — it asserts without arguing. The model likely keyed on the film-name density and comparative framing as signals for analysis. This reveals the core limitation: the model learned surface features (film references, comparative language) rather than the structural distinction between asserting and arguing.
+This was our canonical hard edge case identified during label design. The post uses emotionally charged language ("absolutely struck by") which pulled it toward reaction, but the calm evaluative register and craft vocabulary ("perfectly constructed," "zero fat") are what matter — it's asserting quality, not expressing a feeling. The model got confused by the mixed signals: emotional language points to reaction, craft vocabulary points to analysis or hot_take. At 36% confidence the model was clearly uncertain. This is a genuine boundary case that more targeted training examples would help resolve.
 
 **Wrong prediction #2**
-> "I was so let down by Marty Supreme. My biggest complaint was how little I felt like I could connect to anyone in this story. I loved Good Time and Uncut Gems — there was unbearable tension and love/hate characters throughout."
-> True: reaction — Predicted: analysis
+> "It's reductive to say all biopics are Oscar bait. In 1962 Lawrence of Arabia came out — ostensibly a biopic and one of the greatest films of all time. Every genre has a gimmick that can get overplayed..."
+> True: hot_take — Predicted: analysis (confidence: 0.36)
 
-This post compares three films by the same director, which is a structural feature the model associates with analysis. But the comparison is in service of expressing personal disappointment, not making an argument about craft. The model hasn't learned that the *purpose* of the comparison matters — comparing films to express a feeling is reaction, comparing films to support a claim is analysis.
+This post cites a specific film (Lawrence of Arabia) and makes a comparative argument, which are strong analysis signals. But the post is ultimately asserting a position ("it's reductive") rather than building a structured argument about craft or technique. The Lawrence of Arabia reference is decorative — used to score a point, not as part of a genuine argument. The model hasn't learned to distinguish evidence used to support an argument from evidence used to assert a position.
 
 **Wrong prediction #3**
-> "I'm not sure I've seen a more perfectly constructed film than Rosemary's Baby. Every scene, every shot, every performance tone and note seem to work in a completely tireless movie. The film is like a clockwork."
-> True: hot_take — Predicted: analysis
+> "Too many movies ignore money as a plot point. Friends is the classic example — how do these six 20-somethings afford spacious apartments in the most expensive city while serving part time at a coffee shop?"
+> True: hot_take — Predicted: analysis (confidence: 0.37)
 
-This was our canonical hard edge case identified during label design. The calm register and craft vocabulary ("constructed," "performance tone," "every scene") are strong analysis signals. The model made the same mistake a human annotator might make on first reading. This is a labeling problem as much as a model problem — the boundary here is genuinely subtle and more training examples of this specific type (enthusiastic but vague craft language) would help.
+This post makes a bold claim ("too many movies ignore money") with a specific example to illustrate it. The model read the specific example as evidence of structured reasoning and predicted analysis. But citing one example to back up an assertion is still a hot_take — analysis requires reasoning toward a conclusion, not just illustrating a claim. This reveals a systematic pattern: the model treats any post with a specific example as analysis, regardless of whether the example is being used argumentatively.
 
 ---
 
@@ -201,12 +201,12 @@ This was our canonical hard edge case identified during label design. The calm r
 | "Nolan's visual language has always been consistent and it leans heavily on his cinematographer..." | analysis | analysis | 0.81 |
 | "Altman in general is underrated. He's the greatest American director and rarely gets mentioned..." | hot_take | hot_take | 0.74 |
 | "I watched Mulholland Drive last night and it genuinely blew my mind. Magnificent. Masterpiece..." | reaction | reaction | 0.79 |
-| "I never got the Weapons overhype. It's an extremely fun horror film but there's nothing groundbreaking..." | hot_take | analysis | 0.38 |
-| "I was so let down by Marty Supreme. My biggest complaint was how little I could connect..." | reaction | analysis | 0.38 |
+| "It's reductive to say all biopics are Oscar bait. In 1962 Lawrence of Arabia came out..." | hot_take | analysis | 0.36 |
+| "I'm not sure I've seen a more perfectly constructed film than Rosemary's Baby..." | hot_take | reaction | 0.36 |
 
 The Nolan cinematographer post is a reasonable correct prediction: it names specific DPs (Wally Pfister, Hoyte van Hoytema, Roger Deakins), traces a causal argument about visual consistency, and reasons toward a conclusion rather than asserting one. These are exactly the features that define analysis in our taxonomy.
 
-Note that the two wrong predictions both have confidence of 0.38 — the model is near-uncertain on these. This suggests the model knows it's in ambiguous territory even when it gets it wrong, which is a sign of reasonable calibration.
+Note that all wrong predictions have confidence between 0.34-0.37 — the model is near-uncertain on every error. This suggests the model knows it's in ambiguous territory even when it gets it wrong, which is a sign of reasonable calibration.
 
 ---
 
@@ -236,4 +236,4 @@ To fix this, the most useful intervention would be more training examples of hot
 
 **Instance 2 — Data annotation assistance:** I pasted batches of 5-10 r/TrueFilm posts into Claude along with my label definitions and asked it to assign labels and explain its reasoning. Claude pre-labeled approximately 180 of the 200 examples. I reviewed every single label and corrected approximately 15-20 cases, primarily posts where Claude labeled something as analysis that I judged as hot_take based on the decision rule about craft vocabulary without specific claims. All final labels reflect my judgment.
 
-**Instance 3 — Wrong prediction pattern analysis:** After getting my wrong predictions from Section 4, I pasted the full list into Claude and asked it to identify common patterns. Claude identified the "film-reference density as a proxy for analysis" pattern described in the reflection above. I verified this by re-reading all 6 wrong predictions myself and confirmed the pattern held in 5 of 6 cases. The sixth case (the My Dinner with Andre post) was a genuine edge case where the post discussed class dynamics in film without using many film-specific terms.
+**Instance 3 — Wrong prediction pattern analysis:** After getting my wrong predictions from Section 4, I pasted the full list into Claude and asked it to identify common patterns. Claude identified the "film-reference density as a proxy for analysis" pattern described in the reflection above. I verified this by re-reading all 6 wrong predictions myself and confirmed the pattern held in 5 of 6 cases. The exception was the Rosemary's Baby post, which was predicted as reaction rather than analysis — a different kind of error where emotional language overrode craft vocabulary signals.
